@@ -19,6 +19,7 @@ app.use(cookieParser())
 import userRouter from './routes/user.routes.js'
 
 //routes declaration 
+//we use middelware because our routes and controller are in different files 
 app.use('/api/v1/users',userRouter)
 //  http://localhost:8000/api/v1/users/register
 //                                       /login

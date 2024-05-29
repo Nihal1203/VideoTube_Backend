@@ -30,7 +30,7 @@ const userSchema=new Schema({
   },
   coverImage:{
     type:String,
-    required:true,
+    // required:true,
 
   },
   watchHistory:[
@@ -50,7 +50,7 @@ const userSchema=new Schema({
 },{timestamps:true})
 
 //This is a mongoose middleware that will execute before the save operation happens in database 
-userSchema.pre("save",async function(){
+userSchema.pre("save",async function(next){
   //We are encrypting the password only when we enter the password first time or change the password
   if(!this.isModified("password"))  
     return next();
