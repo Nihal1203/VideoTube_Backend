@@ -4,6 +4,24 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from '../utils/ApiResponse.js'
 
+const generateAccessAndRefreshTokens=async(userId)=>{
+  try {
+    const user=await User.findById(userId)
+    const accessToken=user.generateAccessToken()
+    const refreshToken=user.generateRefreshToken()
+
+    //We also save refresh token in our database
+    user.refreshToken=refreshToken
+    //we are not checking the validation for the entire model because we are just adding refreshtoken in our created entry and if we check the validation it will ask for all fields(password,watchHistory,username,etc) while the time of the insertion and it will generate the error 
+    await user.save({validateBeforeSave:false})
+    return {accessToken,refreshToken}
+
+  } catch (error) {
+    throw new ApiError(500,"Something went wrong while generating refresh and access token")
+  }
+}
+
+
 const registerUser=asyncHandler(async(req,res)=>{
   //get user details from the frontend
   //validation-not empty 
@@ -90,4 +108,67 @@ const registerUser=asyncHandler(async(req,res)=>{
   )
 })
 
-export {registerUser}
+
+
+const loginUser=asyncHandler(async(req,res)=>{
+  //req.body-data
+  //username,email is provided or not 
+  //find the user 
+  //password check if user exists (password check)
+  //Access and Refresh Token 
+  //send cookies
+
+  const {username,email,password}=req.body
+
+  if(!username || !email)
+    throw new ApiError(400,"Username or Password is Required")
+
+
+  const user=await User.findOne({
+    $or:[{username},{email}]
+  })
+  if(!user)
+    throw new ApiError(404,"User Does not Exists")
+  
+  
+  const isPasswordValid= await user.isPasswordCorrect(password)
+  if(!isPasswordValid)
+    throw new ApiError(401,"Password Incorrect")
+
+  const {accessToken,refreshToken}=await generateAccessAndRefreshTokens(user._id)
+
+  const loggedInUser=await User.findById(user._id).select("-password -refreshToken")
+
+  //By the field httpOnly:true , only server can modify the cookies not the frontend 
+  const options={
+    httpOnly:true,
+    secure:true
+  }
+  return res
+  .status(200)
+  .cookie("accessToken",accessToken,options)
+  .cookie("refreshToken",refreshToken,options)
+  .json(
+    new ApiResponse(
+      200,
+      {user:loggedInUser,accessToken,refreshToken},
+      "User Logged In Successfully"
+    )
+  )
+})
+
+const logoutUser=asyncHandler(async(req,res)=>{
+  await User.findByIdAndUpdate(req.user._id,{$set:{refreshToken:undefined}},{new:true})
+
+  const options={
+    httpOnly:true,
+    secure:true
+  }
+  return res
+  .status(200)
+  .clearCookie("accessToken",options)
+  .clearCookie("refreshToken",options)
+  .json(new ApiResponse(200,{},"User Logged Out"))
+
+})
+export {registerUser,loginUser,logoutUser}
