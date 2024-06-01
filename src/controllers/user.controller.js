@@ -170,9 +170,9 @@ const loginUser=asyncHandler(async(req,res)=>{
 const logoutUser=asyncHandler(async(req,res)=>{
   await User.findByIdAndUpdate(req.user._id,
     {
-      $set:
+      $unset:
       {
-        refreshToken:undefined
+        refreshToken:1
       }
     },
     {
@@ -472,7 +472,7 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
 
   return res
   .status(200)
-  .json(new ApiError(200,
+  .json(new ApiResponse(200,
     user[0].watchHistory,
     "Watch History Fetched successfully"
   ))
